@@ -35,8 +35,8 @@ chegadas_turismo_2025 %>%
 
 ##############Chegadas 2019 a 2024
 
-chegadas_2019_2024<-
-purrr::map_dfr(2019:2024, function(ano){
+chegadas_2014_2024<-
+purrr::map_dfr(2014:2024, function(ano){
   print(ano)
   
   endereco <-  paste0("chegadas_",ano,".csv")
@@ -49,7 +49,7 @@ purrr::map_dfr(2019:2024, function(ano){
 })
 
 
-saveRDS(chegadas_2019_2024, "chegadas_2019_2024.rds")
+saveRDS(chegadas_2014_2024, "chegadas_2014_2024.rds")
 
 total_2024<-
   sum(chegadas_2024$chegadas)

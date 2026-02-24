@@ -1,0 +1,185 @@
+---
+title: "storytelling"
+author: "Fernando Almeida Barbalho"
+date: '2026-02-24'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(colorspace)
+
+dados_sti_2024_2025 <- readRDS("~/Github/estatisticas_turismo/dados_sti_2024_2025.rds")
+
+chegadas_2025 <- 
+  read_delim("chegadas_2025.csv", 
+                                    delim = ";", escape_double = FALSE, locale = locale(encoding = "LATIN1"), 
+                                    trim_ws = TRUE) %>%
+  janitor::clean_names() %>%
+  rename(via = via_de_acesso,
+         pais = nome_pais_correto)
+
+chegadas_2014_2024 <- readRDS("~/Github/estatisticas_turismo/chegadas_2014_2024.rds")
+
+
+chegadas_2014_2025<-
+chegadas_2025 %>%
+  bind_rows(chegadas_2014_2024) 
+
+paleta_cores<- list(  cor_fundo= "#D0D0D0", # "#E0E0E0", # # "#F8F8F8",
+  
+  cor_fundo_painel = "#F5F5F5",
+  
+  cor_fundo_estados = "#696969",
+  
+  cor_fundo_mapa_pontos = "#2B2B2B", #"#505050"
+  
+  cor_texto = "#324e5a"
+)
+
+theme_vpr_markdown<- function(paleta_cores){
+
+  theme_light() +
+    theme(
+      panel.background = element_rect(fill= paleta_cores$cor_fundo_painel),
+      panel.grid = element_blank(),
+      legend.position = "right",
+      legend.background = element_rect(fill= paleta_cores$cor_fundo, color = paleta_cores$cor_fundo),
+      legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+      plot.background = element_rect(fill =paleta_cores$cor_fundo ),
+      plot.title = element_markdown(size = 14, face = "bold"),
+      plot.subtitle = element_markdown(size = 12, face = "italic"),
+      text = element_text( colour = paleta_cores$cor_texto),
+      strip.background = element_rect(fill = paleta_cores$cor_fundo  ),
+      strip.text = element_text(size= 8, face ="bold", color = paleta_cores$cor_texto)
+    )  
+  
+  
+}
+
+
+theme_vpr<- function(paleta_cores){
+
+  theme_light() +
+    theme(
+      panel.background = element_rect(fill= paleta_cores$cor_fundo_painel),
+      panel.grid = element_blank(),
+      legend.position = "right",
+      legend.background = element_rect(fill= paleta_cores$cor_fundo, color = paleta_cores$cor_fundo),
+      legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+      plot.background = element_rect(fill =paleta_cores$cor_fundo ),
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 12, face = "italic"),
+      text = element_text( colour = paleta_cores$cor_texto),
+      strip.background = element_rect(fill = paleta_cores$cor_fundo  ),
+      strip.text = element_text(size= 8, face ="bold", color = paleta_cores$cor_texto)
+    )  
+  
+  
+}
+
+
+```
+
+
+```{r fig.dpi= 300}
+
+dados_graficos_total_serie<-
+  chegadas_2014_2025 %>%
+  summarise(quantidade = sum(chegadas, na.rm = TRUE),
+            .by = c(ano)) %>%
+  mutate(ano = as.character(ano)) %>%
+  mutate(quantidade = quantidade/10^6)
+
+media_pre_pandemia<-
+  dados_graficos_total_serie %>%
+  filter(ano<= 2019) %>%
+  summarise(media = mean(quantidade))
+
+  
+
+dados_graficos_total_serie %>%
+  ggplot(aes(x= ano, y=quantidade)) +
+  geom_col(aes(fill= quantidade), show.legend = FALSE) +
+  geom_hline(yintercept = media_pre_pandemia$media, linetype = "dashed", color = "darkgreen", size =0.8) +
+  geom_text(aes(label = scales::number(quantidade, decimal.mark = ",", accuracy = 0.1)), vjust= -0.7, color = paleta_cores$cor_texto, fontface = "bold") +
+  geom_text(data = tibble(ano = "2019", quantidade = 8), 
+            aes(label = "Média de seis anos pré-pandemia"),
+            hjust =1.05,
+            fontface = "bold",
+            color = "darkgreen") +
+  geom_curve(
+    aes(y = 8, x = "2019", yend =6.51, xend = "2021"), 
+    curvature = -0.2, ncp = 50,
+    arrow = arrow(length = unit(4, "mm"), type = "closed"),
+    color = "darkgreen"
+  )+
+  geom_text(data = tibble(ano = "2023", quantidade = 9.5), 
+            aes(label = "Fluxo internacional fica 43% acima do padrão pré-pandemia"),
+            hjust =1.01,
+            fontface = "bold",
+            color = paleta_cores$cor_texto) +
+  geom_curve(
+    aes(y = 9, x = "2025" , yend =9.5, xend = "2023"), 
+    curvature = 0.2, ncp = 50,
+    arrow = arrow(length = unit(4, "mm"), type = "closed"),
+    color = paleta_cores$cor_texto
+  )+
+  scale_fill_continuous_sequential(palette = "heat 2") +
+  scale_y_continuous(breaks = media_pre_pandemia$media, 
+                     labels = scales::number_format(decimal.mark =",", accuracy = 0.1),
+                     expand = expansion(mult = c(0.01, 0.09))) +
+  theme_vpr(paleta_cores = paleta_cores)  +
+  theme(
+    axis.text.y = element_text(color = "darkgreen", face =  "bold")
+  ) +
+  labs(title = "Turismo no Brasil bate recorde histórico em 2025",
+       subtitle = "9,3 milhões de visitantes estrangeiros - maior valor desde 1970",
+       caption = "Valores em milhões. Série do gráfico: 2014–2025. 2025 é recorde desde 1970. Fonte MTur. Elaboração: VPR/DIESO",
+       y="Visitantes estrangeiros (milhões)",
+       )
+  
+
+
+```
+
+
+```{r fig.dpi= 300}
+
+total_2025<-
+  chegadas_2014_2025 %>%
+  filter(ano == 2025) %>%
+  summarise(quantidade = sum(chegadas, na.rm = TRUE))
+  
+
+dados_grafico_ranking_2025<-
+  chegadas_2014_2025 %>%
+  filter(ano == 2025) %>%
+  summarise(quantidade = sum(chegadas, na.rm = TRUE),
+            proporcao = quantidade/total_2025$quantidade,
+            .by = c(pais)) %>%
+  mutate(quantidade = quantidade/10^3) %>%
+  slice_max(n= 20, order_by = proporcao) %>%
+  mutate(pais = reorder(pais, quantidade))
+  
+dados_grafico_ranking_2025 %>%
+  ggplot(aes(x= quantidade, y=pais)) +
+  geom_col(aes(fill= quantidade), show.legend = FALSE) +
+  geom_text(aes(label = scales::number(quantidade, decimal.mark = ",", big.mark = ".", accuracy = 1.0)), hjust= -0.1) +
+  scale_fill_continuous_sequential(palette = "Heat 2") +
+  scale_x_continuous(expand = expansion(mult=c(0.01, 0.1))) +
+  theme_vpr(paleta_cores) +
+  labs(
+    title= "Argentina lidera o ranking de país com maior número de visitantes com 36% do total",
+    subtitle = "Quatro dos cinco países com maior número de visitantes são da América do Sul"
+  )
+  #título: 
+  #subtítulo: 
+
+
+```
+
