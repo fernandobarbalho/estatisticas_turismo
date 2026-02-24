@@ -33,11 +33,23 @@ chegadas_turismo_2025 %>%
 
 
 
-chegadas_2024 <- read_delim("chegadas_2024.csv", 
-                            delim = ";", escape_double = FALSE, locale = locale(encoding = "LATIN1"), 
-                            trim_ws = TRUE) %>%
-  janitor::clean_names()
+##############Chegadas 2019 a 2024
 
+chegadas_2019_2024<-
+purrr::map_dfr(2019:2024, function(ano){
+  print(ano)
+  
+  endereco <-  paste0("chegadas_",ano,".csv")
+  
+  read_delim(endereco, 
+                              delim = ";", escape_double = FALSE, locale = locale(encoding = "LATIN1"), 
+                              trim_ws = TRUE) %>%
+    janitor::clean_names()
+  
+})
+
+
+saveRDS(chegadas_2019_2024, "chegadas_2019_2024.rds")
 
 total_2024<-
   sum(chegadas_2024$chegadas)
