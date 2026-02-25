@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 library(tidyverse)
 library(colorspace)
+library(ggbeeswarm)
 
 dados_sti_2024_2025 <- readRDS("~/Github/estatisticas_turismo/dados_sti_2024_2025.rds")
 
@@ -49,6 +50,24 @@ dados_variacao_2025_2024<-
   mutate(ano_2024 = ifelse(is.na(ano_2024),0,ano_2024),
          ano_2025 = ifelse(is.na(ano_2025),0,ano_2025),
          variacao = ano_2025 - ano_2024)
+
+dados_pf_tur<-
+ chegadas_2014_2025 %>%
+  filter(ano %in% c(2024, 2025)) %>%  
+  summarise(quantidade = sum(chegadas),
+            .by = c(ano, pais)) %>%
+  mutate(ano = as.character(ano),
+         ano = as.numeric(ano)) %>%
+  inner_join(
+    dados_sti_2024_2025 %>%
+      rename(pais = nacionalidade) %>%
+      mutate(pais =  str_to_title(pais)) %>%
+      filter(tipo == "ENTRADA",
+             classificacao == "VISITANTE") %>%
+      summarise(quantidade_entrada_pf = sum(total),
+                .by = c(ano, pais))) %>%
+  mutate(proporcao_tur_pf = quantidade/quantidade_entrada_pf)
+
 
 
 theme_vpr_markdown<- function(paleta_cores){
@@ -306,18 +325,6 @@ dados_grafico_variacao_top_20 %>%
             aes(label= "Estados Unidos : 1,2% da variação total (12º posição)") ,
             color = "#555555",
             hjust = 0) +
-  # geom_curve(
-  #   aes(y = 2.5, x = 900 , yend =3.5, xend = 850), 
-  #   curvature = 0.2, ncp = 50,
-  #   arrow = arrow(length = unit(4, "mm"), type = "closed"),
-  #   color = paleta_cores$cor_texto
-  # )+
-  # geom_curve(
-  #   aes(y = 1.5, x = 900 , yend =1, xend = 0), 
-  #   curvature = -0.2, ncp = 50,
-  #   arrow = arrow(length = unit(4, "mm"), type = "closed"),
-  #   color = paleta_cores$cor_texto
-  # )+
   scale_fill_continuous_sequential(palette = "Heat 2")+
   scale_x_continuous(expand = expansion(mult = c(0.05,0.09))) +
   theme_vpr(paleta_cores) +
@@ -332,6 +339,48 @@ dados_grafico_variacao_top_20 %>%
     caption = "Valores em milhares. Fonte MTur. Elaboração: VPR/DIESO"
     
   )
+
+
+```
+```{r fig.dpi= 300}
+
+
+quantile(dados_pf_tur$proporcao_tur_pf)
+
+dados_grafico_pf_tur<-
+  dados_pf_tur %>%
+  filter(pais != "Venezuela")
+
+
+dados_sel<-
+  dados_pf_tur %>%
+  filter(pais == "Venezuela") %>%
+  mutate(ano = "todos")
+
+
+dados_grafico_pf_tur %>%
+  mutate(ano = "todos") %>%
+  ggplot(aes(x= ano, y= proporcao_tur_pf)) +
+  geom_rect(ymin= 1.01, ymax= 1.40, xmin=0.6, xmax= 1.4, fill= NA, color = paleta_cores$cor_fundo) +
+  geom_quasirandom(fill=paleta_cores$cor_fundo,  pch=21, color= paleta_cores$cor_fundo_painel, size=2.5) +
+  geom_point(data = dados_sel,fill =  "#003DA5",pch=21, color= paleta_cores$cor_fundo_painel, size=2.5 ) +
+  geom_text(data= dados_sel[2,], aes(label =str_wrap("2024: Outlier extremo (0,08)",15)), vjust =-0.5, color = "#003DA5", hjust =0) +
+  coord_flip()+
+  scale_y_continuous(breaks = c(0,1,1.4)) +
+  theme_vpr(paleta_cores) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank()
+  )+
+  labs(
+    title= "Estimativa de visitantes da Venezuela destoa do padrão internacional",
+    subtitle = "Intervalo típico varia de 1 a 1,40. Venezuela registrou 0,08 em 2024 e 0,96 em 2025"  ,
+    y= "Razão entre estimativa do MTur e visitantes no STI (PF)",
+    caption = "Relações calculadas para todos os países em 2024 e 2025. Fonte: MTur e Polícia Federal. Elaboração: VPR/DIESO"
+    
+  )
+
+
 
 
 ```
