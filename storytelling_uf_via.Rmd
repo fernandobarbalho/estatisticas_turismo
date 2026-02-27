@@ -1,0 +1,229 @@
+---
+title: "storytelling_turismo_ufs_paises"
+author: "Fernando Almeida Barbalho"
+date: "2026-02-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE )
+library(tidyverse)
+library(colorspace)
+library(ggalluvial)
+
+chegadas_2025 <- 
+  read_delim("chegadas_2025.csv", 
+                                    delim = ";", escape_double = FALSE, locale = locale(encoding = "LATIN1"), 
+                                    trim_ws = TRUE) %>%
+  janitor::clean_names() %>%
+  rename(via = via_de_acesso,
+         pais = nome_pais_correto)
+
+chegadas_2014_2024 <- readRDS("~/Github/estatisticas_turismo/chegadas_2014_2024.rds")
+
+
+chegadas_2014_2025<-
+chegadas_2025 %>%
+  bind_rows(chegadas_2014_2024) 
+
+top_cinco_paises_2025<-
+chegadas_2014_2025 %>%
+  filter(ano==2025) %>%
+  summarise(total = sum(chegadas),
+            .by = c(pais)) %>%
+  slice_max(order_by = total, n=5) %>%
+  select(pais)
+
+top_cinco_ufs_2025<-
+chegadas_2014_2025 %>%
+  filter(ano==2025) %>%
+  summarise(total = sum(chegadas),
+            .by = c(uf)) %>%
+  slice_max(order_by = total, n=5) %>%
+  select(uf)
+
+
+paleta_cores<- list(  cor_fundo= "#D0D0D0", # "#E0E0E0", # # "#F8F8F8",
+  
+  cor_fundo_painel = "#F5F5F5",
+  
+  cor_fundo_estados = "#696969",
+  
+  cor_fundo_mapa_pontos = "#2B2B2B", #"#505050"
+  
+  cor_texto = "#324e5a"
+)
+
+cores_paises_cb <- c(
+  "Argentina"      = "#0072B2",
+  "Demais países"  = "#999999",
+  "Chile"          = "#D55E00",
+  "Estados Unidos" = "#009E73",
+  "Paraguai"       = "#CC79A7",
+  "Uruguai"        = "#E69F00"
+)
+
+cores_vias <- c(
+  "Aérea" = "#0072B2",
+  "Terrestre" = "#009E73",
+  "Fluvial/Marítima" = "#E69F00"
+)
+
+theme_vpr_markdown<- function(paleta_cores){
+
+  theme_light() +
+    theme(
+      panel.background = element_rect(fill= paleta_cores$cor_fundo_painel),
+      panel.grid = element_blank(),
+      legend.position = "right",
+      legend.background = element_rect(fill= paleta_cores$cor_fundo, color = paleta_cores$cor_fundo),
+      legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+      plot.background = element_rect(fill =paleta_cores$cor_fundo ),
+      plot.title = element_markdown(size = 14, face = "bold"),
+      plot.subtitle = element_markdown(size = 12, face = "italic"),
+      text = element_text( colour = paleta_cores$cor_texto),
+      strip.background = element_rect(fill = paleta_cores$cor_fundo  ),
+      strip.text = element_text(size= 8, face ="bold", color = paleta_cores$cor_texto)
+    )  
+  
+  
+}
+
+
+theme_vpr<- function(paleta_cores){
+
+  theme_light() +
+    theme(
+      panel.background = element_rect(fill= paleta_cores$cor_fundo_painel),
+      panel.grid = element_blank(),
+      legend.position = "right",
+      legend.background = element_rect(fill= paleta_cores$cor_fundo, color = paleta_cores$cor_fundo),
+      legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+      plot.background = element_rect(fill =paleta_cores$cor_fundo ),
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 12, face = "italic"),
+      text = element_text( colour = paleta_cores$cor_texto),
+      strip.background = element_rect(fill = paleta_cores$cor_fundo  ),
+      strip.text = element_text(size= 8, face ="bold", color = paleta_cores$cor_texto)
+    )  
+  
+  
+}
+
+
+```
+
+
+```{r fig.dpi= 300}
+
+dados_grafico_via_uf<-
+  chegadas_2014_2025 %>%
+  filter(ano == 2025) %>%
+  mutate(pais = ifelse(pais %in% top_cinco_paises_2025$pais, pais, "Demais países"),
+         uf = ifelse(uf %in% top_cinco_ufs_2025$uf, uf, "Demais UFs"),
+         via = ifelse(via %in% c("Aérea", "Terrestre"),via,"Outras"))%>%
+  summarise(total = sum(chegadas),
+            .by = c(pais, via, uf)) %>%
+  mutate(pais = reorder(pais, desc(total) ),
+         uf = reorder(uf,desc(total) ),
+         via = reorder(via, desc(total) ))
+  
+
+dados_grafico_via_uf %>%
+  ggplot(aes(axis1 =pais, axis2= via, axis3 = uf, y = total)) +
+  geom_flow(aes(fill = pais), show.legend = FALSE) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)))  +
+  # geom_label(aes(x= pos_x, y=0.1, label="US$ 0,2 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=2, label="US$ 3,1 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=4.5, label="US$ 0,6 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=4, label="US$ 1,0 bi"), alpha= 0.3, hjust=1) +
+  #scale_fill_viridis(discrete = TRUE, option = "E")+
+  #scale_fill_discrete_qualitative(palette = "Dark 3", rev= TRUE)+
+  scale_fill_manual(values = cores_paises_cb) +
+  theme_vpr(paleta_cores) +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+
+  )
+
+
+```
+
+
+```{r fig.dpi= 300}
+
+dados_grafico_via_uf %>%
+  ggplot(aes(axis1 =pais,  axis2 = uf, y = total)) +
+  geom_flow(aes(fill = pais), show.legend = FALSE) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)))  +
+  # geom_label(aes(x= pos_x, y=0.1, label="US$ 0,2 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=2, label="US$ 3,1 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=4.5, label="US$ 0,6 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=4, label="US$ 1,0 bi"), alpha= 0.3, hjust=1) +
+  #scale_fill_viridis(discrete = TRUE, option = "E")+
+  #scale_fill_discrete_qualitative(palette = "Dark 3", rev= TRUE)+
+  scale_fill_manual(values = cores_paises_cb) +
+  theme_vpr(paleta_cores) +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+
+  )
+
+
+```
+
+
+
+```{r fig.dpi= 300}
+
+dados_grafico_via_uf %>%
+  ggplot(aes(axis1 =via, axis2= uf, y = total)) +
+  geom_flow(aes(fill = via), show.legend = FALSE) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)))  +
+  # geom_label(aes(x= pos_x, y=0.1, label="US$ 0,2 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=2, label="US$ 3,1 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=4.5, label="US$ 0,6 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=4, label="US$ 1,0 bi"), alpha= 0.3, hjust=1) +
+  #scale_fill_viridis(discrete = TRUE, option = "E")+
+  #scale_fill_discrete_qualitative(palette = "cold", rev= TRUE)+
+  scale_fill_manual(values = cores_vias) +
+  theme_vpr(paleta_cores) +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+
+  )
+
+
+```
+```{r fig.dpi= 300}
+
+dados_grafico_via_uf %>%
+  ggplot(aes(axis1 =pais, axis2= via, y = total)) +
+  geom_flow(aes(fill = pais), show.legend = FALSE) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)))  +
+  # geom_label(aes(x= pos_x, y=0.1, label="US$ 0,2 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=2, label="US$ 3,1 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=4.5, label="US$ 0,6 bi"), alpha= 0.3, hjust=1) +
+  # geom_label(aes(x= pos_x, y=4, label="US$ 1,0 bi"), alpha= 0.3, hjust=1) +
+  #scale_fill_viridis(discrete = TRUE, option = "E")+
+  #scale_fill_discrete_qualitative(palette = "cold", rev= TRUE)+
+  scale_fill_manual(values = cores_paises_cb) +
+  theme_vpr(paleta_cores) +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+
+  )
+
+
+```
+
