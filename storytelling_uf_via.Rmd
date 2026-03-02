@@ -69,6 +69,18 @@ cores_vias <- c(
   "Fluvial/Marítima" = "#E69F00"
 )
 
+paises_fronteira_brasil <- c(
+  "Argentina",
+  "Bolívia",
+  "Colômbia",
+  "Guiana",
+  "Paraguai",
+  "Peru",
+  "Suriname",
+  "Uruguai",
+  "Venezuela"
+)
+
 theme_vpr_markdown<- function(paleta_cores){
 
   theme_light() +
@@ -121,7 +133,7 @@ theme_vpr<- function(paleta_cores){
 dados_grafico_via_uf<-
   chegadas_2014_2025 %>%
   filter(ano == 2025) %>%
-  mutate(pais = ifelse(pais %in% top_cinco_paises_2025$pais, pais, "Demais países"),
+  mutate(pais = ifelse(pais %in% c(top_cinco_paises_2025$pais)  , pais, "Demais países"),
          uf = ifelse(uf %in% top_cinco_ufs_2025$uf, uf, "Demais UFs"),
          via = ifelse(via %in% c("Aérea", "Terrestre"),via,"Outras"))%>%
   summarise(total = sum(chegadas),
@@ -224,6 +236,57 @@ dados_grafico_via_uf %>%
 
   )
 
+
+```
+
+
+```{r fig.dpi= 300}
+
+pais_sel <-  c("França", "Paraguai") 
+
+dados_grafico_pais_sel<-
+  chegadas_2014_2025 %>%
+  filter(pais %in% pais_sel) %>%
+  summarise(quantidade = sum(chegadas,na.rm = TRUE),
+            .by = c(ano, pais) ) 
+
+dados_grafico_pais_sel %>%
+  ggplot(aes(x= ano, y= quantidade, fill = pais)) +
+  geom_col(position = "dodge") +
+  facet_wrap(pais~., scale = "free_y" )
+
+```
+
+```{r fig.dpi= 300}
+
+dados_grafico_series_paises<-
+  chegadas_2014_2025 %>%
+  mutate(pais = ifelse(pais %in% c(top_cinco_paises_2025$pais) , pais, "Demais países")) %>%
+  summarise(quantidade = sum(chegadas, na.rm = TRUE),
+            .by = c(ano, pais)) %>%
+  mutate(ano = as.character(ano))
+
+
+dados_grafico_series_paises %>%
+  ggplot(aes(x= ano, y= quantidade)) +
+  geom_col() +
+  facet_wrap(pais~., scales = "free_y")
+  
+```
+
+```{r}
+dados_grafico_series_fronteira_sn<-
+  chegadas_2014_2025 %>%
+  mutate(pais = ifelse(pais %in% paises_fronteira_brasil , "Países com fronteira", "Países sem fronteira")) %>%
+  summarise(quantidade = sum(chegadas, na.rm = TRUE),
+            .by = c(ano, pais)) %>%
+  mutate(ano = as.character(ano))
+
+
+dados_grafico_series_fronteira_sn %>%
+  ggplot(aes(x= ano, y= quantidade)) +
+  geom_col() +
+  facet_wrap(pais~., scales = "free_y")
 
 ```
 
