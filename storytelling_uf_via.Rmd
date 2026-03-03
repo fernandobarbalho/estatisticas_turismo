@@ -81,6 +81,18 @@ paises_fronteira_brasil <- c(
   "Venezuela"
 )
 
+dados_sumarizados_via_uf<-
+  chegadas_2014_2025 %>%
+  filter(ano == 2025) %>%
+  mutate(pais = ifelse(pais %in% c(top_cinco_paises_2025$pais)  , pais, "Demais países"),
+         uf = ifelse(uf %in% top_cinco_ufs_2025$uf, uf, "Demais UFs"),
+         via = ifelse(via %in% c("Aérea", "Terrestre"),via,"Outras"))%>%
+  summarise(total = sum(chegadas),
+            .by = c(pais, via, uf)) %>%
+  mutate(pais = reorder(pais, desc(total) ),
+         uf = reorder(uf,desc(total) ),
+         via = reorder(via, desc(total) ))
+
 theme_vpr_markdown<- function(paleta_cores){
 
   theme_light() +
@@ -131,16 +143,7 @@ theme_vpr<- function(paleta_cores){
 ```{r fig.dpi= 300}
 
 dados_grafico_via_uf<-
-  chegadas_2014_2025 %>%
-  filter(ano == 2025) %>%
-  mutate(pais = ifelse(pais %in% c(top_cinco_paises_2025$pais)  , pais, "Demais países"),
-         uf = ifelse(uf %in% top_cinco_ufs_2025$uf, uf, "Demais UFs"),
-         via = ifelse(via %in% c("Aérea", "Terrestre"),via,"Outras"))%>%
-  summarise(total = sum(chegadas),
-            .by = c(pais, via, uf)) %>%
-  mutate(pais = reorder(pais, desc(total) ),
-         uf = reorder(uf,desc(total) ),
-         via = reorder(via, desc(total) ))
+  dados_sumarizados_via_uf 
   
 
 dados_grafico_via_uf %>%
@@ -168,7 +171,10 @@ dados_grafico_via_uf %>%
 
 ```{r fig.dpi= 300}
 
-dados_grafico_via_uf %>%
+dados_grafico_via_uf_pais <-
+  dados_sumarizados_via_uf
+
+dados_grafico_via_uf_pais %>%
   ggplot(aes(axis1 =pais,  axis2 = uf, y = total)) +
   geom_flow(aes(fill = pais), show.legend = FALSE) +
   geom_stratum() +
@@ -194,9 +200,16 @@ dados_grafico_via_uf %>%
 
 ```{r fig.dpi= 300}
 
+
+dados_grafico_via_uf<-
+  dados_sumarizados_via_uf %>%
+  summarise(total = sum(total),
+            .by = c(via, uf))
+  
+
 dados_grafico_via_uf %>%
   ggplot(aes(axis1 =via, axis2= uf, y = total)) +
-  geom_flow(aes(fill = via), show.legend = FALSE) +
+  geom_flow(aes(fill = total), show.legend = FALSE) +
   geom_stratum() +
   geom_text(stat = "stratum", aes(label = after_stat(stratum)))  +
   # geom_label(aes(x= pos_x, y=0.1, label="US$ 0,2 bi"), alpha= 0.3, hjust=1) +
@@ -206,6 +219,7 @@ dados_grafico_via_uf %>%
   #scale_fill_viridis(discrete = TRUE, option = "E")+
   #scale_fill_discrete_qualitative(palette = "cold", rev= TRUE)+
   scale_fill_manual(values = cores_vias) +
+  scale_fill_continuous_sequential(palette = "Heat 2") +
   theme_vpr(paleta_cores) +
   theme(
     axis.title = element_blank(),
@@ -215,9 +229,16 @@ dados_grafico_via_uf %>%
 
 
 ```
+
 ```{r fig.dpi= 300}
 
-dados_grafico_via_uf %>%
+dados_grafico_pais_via<-
+  dados_sumarizados_via_uf %>%
+  summarise(total = sum(total),
+            .by = c(pais, via))
+  
+
+dados_grafico_pais_via %>%
   ggplot(aes(axis1 =pais, axis2= via, y = total)) +
   geom_flow(aes(fill = pais, curve_type = "sigmoid"), show.legend = FALSE) +
   geom_stratum(aes(fill= pais), show.legend = FALSE) +
